@@ -4,8 +4,24 @@ LABEL org.opencontainers.image.authors="admin@minenet.at"
 LABEL org.opencontainers.image.source="https://github.com/ich777/docker-steamcmd-server"
 
 RUN apt-get update && \
-	apt-get -y install --no-install-recommends lib32gcc-s1 lib32stdc++6 lib32z1 && \
-	rm -rf /var/lib/apt/lists/*
+	apt-get -y install --no-install-recommends lib32gcc-s1 lib32stdc++6 lib32z1 curl build-essential pkg-config libssl-dev protobuf-compiler && \
+	curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
+	export PATH="/root/.cargo/bin:${PATH}"
+
+# Copy steamguard-cli source
+COPY steamguard-cli /tmp/steamguard-cli
+
+# Build and install steamguard-cli
+RUN cd /tmp/steamguard-cli && \
+	export PATH="/root/.cargo/bin:${PATH}" && \
+	cargo build --release && \
+	cp target/release/steamguard /usr/local/bin/ && \
+	cd / && \
+	rm -rf /tmp/steamguard-cli && \
+	rustup self uninstall -y && \
+	apt-get remove -y build-essential pkg-config libssl-dev protobuf-compiler && \
+	apt-get autoremove -y && \
+	rm -rf /var/lib/apt/lists/* /root/.cargo
 
 ENV DATA_DIR="/serverdata"
 ENV STEAMCMD_DIR="${DATA_DIR}/steamcmd"
@@ -22,6 +38,8 @@ ENV USERNAME=""
 ENV PASSWRD=""
 ENV USER="steam"
 ENV DATA_PERM=770
+ENV STEAM_SHARED_SECRET=""
+ENV STEAM_IDENTITY_SECRET=""
 
 RUN mkdir $DATA_DIR && \
 	mkdir $STEAMCMD_DIR && \

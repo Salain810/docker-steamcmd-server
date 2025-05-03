@@ -12,9 +12,28 @@ if [ "${USERNAME}" == "" ]; then
     +login anonymous \
     +quit
 else
-    ${STEAMCMD_DIR}/steamcmd.sh \
-    +login ${USERNAME} ${PASSWRD} \
-    +quit
+    if [ -n "${STEAM_SHARED_SECRET}" ] && [ -n "${STEAM_IDENTITY_SECRET}" ]; then
+        echo "---Generating Steam Guard code---"
+        # Configure steamguard-cli with secrets
+        mkdir -p ~/.config/steamguard-cli
+        echo "{\"shared_secret\": \"${STEAM_SHARED_SECRET}\", \"identity_secret\": \"${STEAM_IDENTITY_SECRET}\"}" > ~/.config/steamguard-cli/secrets.json
+        
+        # Generate 2FA code
+        STEAM_GUARD_CODE=$(steamguard generate)
+        
+        echo "---Logging in with Steam Guard---"
+        ${STEAMCMD_DIR}/steamcmd.sh \
+        +login ${USERNAME} ${PASSWRD} ${STEAM_GUARD_CODE} \
+        +quit
+        
+        # Clean up secrets
+        rm -rf ~/.config/steamguard-cli
+    else
+        echo "---Steam Guard secrets not provided, attempting login without 2FA---"
+        ${STEAMCMD_DIR}/steamcmd.sh \
+        +login ${USERNAME} ${PASSWRD} \
+        +quit
+    fi
 fi
 
 echo "---Update Server---"
@@ -34,19 +53,39 @@ if [ "${USERNAME}" == "" ]; then
         +quit
     fi
 else
-    if [ "${VALIDATE}" == "true" ]; then
-    	echo "---Validating installation---"
-        ${STEAMCMD_DIR}/steamcmd.sh \
-        +force_install_dir ${SERVER_DIR} \
-        +login ${USERNAME} ${PASSWRD} \
-        +app_update ${GAME_ID} validate \
-        +quit
+    if [ -n "${STEAM_SHARED_SECRET}" ] && [ -n "${STEAM_IDENTITY_SECRET}" ]; then
+        # Generate 2FA code
+        STEAM_GUARD_CODE=$(steamguard generate)
+        
+        if [ "${VALIDATE}" == "true" ]; then
+            echo "---Validating installation with Steam Guard---"
+            ${STEAMCMD_DIR}/steamcmd.sh \
+            +force_install_dir ${SERVER_DIR} \
+            +login ${USERNAME} ${PASSWRD} ${STEAM_GUARD_CODE} \
+            +app_update ${GAME_ID} validate \
+            +quit
+        else
+            ${STEAMCMD_DIR}/steamcmd.sh \
+            +force_install_dir ${SERVER_DIR} \
+            +login ${USERNAME} ${PASSWRD} ${STEAM_GUARD_CODE} \
+            +app_update ${GAME_ID} \
+            +quit
+        fi
     else
-        ${STEAMCMD_DIR}/steamcmd.sh \
-        +force_install_dir ${SERVER_DIR} \
-        +login ${USERNAME} ${PASSWRD} \
-        +app_update ${GAME_ID} \
-        +quit
+        if [ "${VALIDATE}" == "true" ]; then
+            echo "---Validating installation without Steam Guard---"
+            ${STEAMCMD_DIR}/steamcmd.sh \
+            +force_install_dir ${SERVER_DIR} \
+            +login ${USERNAME} ${PASSWRD} \
+            +app_update ${GAME_ID} validate \
+            +quit
+        else
+            ${STEAMCMD_DIR}/steamcmd.sh \
+            +force_install_dir ${SERVER_DIR} \
+            +login ${USERNAME} ${PASSWRD} \
+            +app_update ${GAME_ID} \
+            +quit
+        fi
     fi
 fi
 
