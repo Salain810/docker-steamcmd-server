@@ -1,4 +1,4 @@
-FROM ich777/debian-baseimage:bullseye_amd64
+FROM ich777/debian-baseimage:bookworm_amd64
 
 LABEL org.opencontainers.image.source="https://github.com/Salain810/docker-steamcmd-server"
 
