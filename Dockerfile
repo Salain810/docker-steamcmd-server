@@ -1,26 +1,18 @@
-FROM ich777/debian-baseimage:bullseye_amd64
+FROM ich777/debian-baseimage:bookworm_amd64
 
 LABEL org.opencontainers.image.source="https://github.com/Salain810/docker-steamcmd-server"
 
+# steamguard-cli: official prebuilt static binary, pinned by version and SHA-256
+ARG STEAMGUARD_VERSION=0.18.4
+ARG STEAMGUARD_SHA256=36286b1ee2de797ec59e545f482a39b105cc53c93019bbec8efe552d7eaebe14
+
 RUN apt-get update && \
-	apt-get -y install --no-install-recommends lib32gcc-s1 lib32stdc++6 lib32z1 curl build-essential pkg-config libssl-dev protobuf-compiler && \
-	curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
-	export PATH="/root/.cargo/bin:${PATH}"
-
-# Copy steamguard-cli source
-COPY steamguard-cli /tmp/steamguard-cli
-
-# Build and install steamguard-cli
-RUN cd /tmp/steamguard-cli && \
-	export PATH="/root/.cargo/bin:${PATH}" && \
-	cargo build --release && \
-	cp target/release/steamguard /usr/local/bin/ && \
-	cd / && \
-	rm -rf /tmp/steamguard-cli && \
-	rustup self uninstall -y && \
-	apt-get remove -y build-essential pkg-config libssl-dev protobuf-compiler && \
-	apt-get autoremove -y && \
-	rm -rf /var/lib/apt/lists/* /root/.cargo
+	apt-get -y install --no-install-recommends lib32gcc-s1 lib32stdc++6 lib32z1 curl ca-certificates && \
+	curl -fsSL -o /usr/local/bin/steamguard \
+		"https://github.com/dyc3/steamguard-cli/releases/download/v${STEAMGUARD_VERSION}/steamguard-linux-musl-x86_64" && \
+	echo "${STEAMGUARD_SHA256}  /usr/local/bin/steamguard" | sha256sum -c - && \
+	chmod 755 /usr/local/bin/steamguard && \
+	rm -rf /var/lib/apt/lists/*
 
 ENV DATA_DIR="/serverdata"
 ENV STEAMCMD_DIR="${DATA_DIR}/steamcmd"
